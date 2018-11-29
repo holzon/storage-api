@@ -1,5 +1,6 @@
 const busboy = require('busboy-wrapper')
 const path = require('path')
+const upath = require('upath')
 const fs = require('fs')
 const mv = require('mv')
 const mkdirp = require('mkdirp')
@@ -43,6 +44,21 @@ module.exports = ({
       fs.createReadStream(filePath).pipe(r)
     }
   },
+  '/filepath': {
+    * post (q, r, _, parts) {
+      const filePaths = []
+      for (const parts of yield q.json()) {
+        console.log(parts)
+        const key = parts.split('.')[0]
+        let filePath = upath.normalize(shardKey(key))
+        if (!filePath.includes('/mnt/')) {
+          filePath = upath.join('/mnt', filePath)
+        }
+        filePaths.push(filePath)
+      }
+      r.json(filePaths)
+    }
+  },
   '/upload': {
     * post (q, r) {
       const [ fields, files ] =
@@ -63,6 +79,7 @@ module.exports = ({
       if (!fileKeys.length && !fieldKeys.length) return r.error('no files', 400)
 
       for (const name of fileKeys) {
+        console.log('uploading file ' + name)
         const file = files[name]
         const source = file.path
         const { size, hash: key } = file
